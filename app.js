@@ -32,7 +32,6 @@ const snake = {
     const headX = this.cells[this.cells.length - 1].x;
     const headY = this.cells[this.cells.length - 1].y;
 
-    // Collision with food
     if (headX === food.x && headY === food.y) {
       score += food.isSpecial ? 3 : 1;
       food = getRandomFood();
@@ -49,13 +48,11 @@ const snake = {
     else if (this.direction === "left") nextX--;
     else if (this.direction === "right") nextX++;
 
-    // Wall Collision
     if (nextX * cs >= W || nextX < 0 || nextY * cs >= H || nextY < 0) {
       gameOver();
       return;
     }
 
-    // Self-Collision Check
     for (let cell of this.cells) {
       if (cell.x === nextX && cell.y === nextY) {
         gameOver();
@@ -73,6 +70,9 @@ function init() {
   document.addEventListener("keydown", keyPressed);
 }
 
+let isPaused = false;
+let isGameOver = false;
+
 function keyPressed(e) {
   if (e.key === "ArrowDown" && snake.direction !== "up") {
     snake.direction = "down";
@@ -82,8 +82,22 @@ function keyPressed(e) {
     snake.direction = "up";
   } else if (e.key === "ArrowRight" && snake.direction !== "left") {
     snake.direction = "right";
-  } else if (e.key === " ") {
-    restartGame(); // Spacebar to restart
+  } else if (e.key === " " && isGameOver === false) {
+    togglePause();
+  } else if (e.key === "Enter") {
+    restartGame();
+  }
+}
+
+function togglePause() {
+  if (isPaused) {
+    id = setInterval(gameLoop, speed);
+    isPaused = false;
+  } else {
+    clearInterval(id);
+    isPaused = true;
+    pen.fillStyle = "red";
+    pen.fillText("Paused", W / 2 - 100, H / 2);
   }
 }
 
@@ -122,15 +136,16 @@ function getRandomFood() {
 
 function increaseSpeed() {
   clearInterval(id);
-  speed = Math.max(50, speed * 0.95); // Reduce interval time (increase speed)
+  speed = Math.max(50, speed * 0.95);
   id = setInterval(gameLoop, speed);
 }
 
 function gameOver() {
   pen.fillStyle = "red";
-  pen.fillText("Game Over! Press Space to Restart", W / 3, H / 2);
+  pen.fillText(`Game Over! Press "Enter" to Restart`, W / 3, H / 2);
   clearInterval(id);
   updateHighScore();
+  isGameOver = true;
 }
 
 function updateHighScore() {
@@ -154,8 +169,10 @@ function resetHighScore() {
 }
 
 function restartGame() {
+  isGameOver = false;
   score = 0;
   speed = 100;
+  isPaused = false;
   snake.direction = "right";
   snake.createSnake();
   food = getRandomFood();
