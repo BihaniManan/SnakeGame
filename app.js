@@ -1,14 +1,19 @@
 const canvas = document.getElementById("canvas");
 const pen = canvas.getContext("2d");
-pen.fillStyle = "yellow";
 
+canvas.width = window.innerWidth > 600 ? 1200 : window.innerWidth - 20;  
+canvas.height = window.innerHeight > 600 ? 735 : window.innerHeight - 20;
+
+const W = canvas.width;
+const H = canvas.height;
 const cs = 67;
-const W = 1200;
-const H = 735;
+
 let food = null;
 let score = 0;
 let speed = 100;
 let id;
+let isPaused = false;
+let isGameOver = false;
 
 const snake = {
   init_len: 5,
@@ -29,6 +34,8 @@ const snake = {
   },
 
   updateSnake: function () {
+    if (isPaused || isGameOver) return;
+
     const headX = this.cells[this.cells.length - 1].x;
     const headY = this.cells[this.cells.length - 1].y;
 
@@ -68,10 +75,8 @@ function init() {
   snake.createSnake();
   food = getRandomFood();
   document.addEventListener("keydown", keyPressed);
+  addSwipeControls();
 }
-
-let isPaused = false;
-let isGameOver = false;
 
 function keyPressed(e) {
   if (e.key === "ArrowDown" && snake.direction !== "up") {
@@ -82,7 +87,7 @@ function keyPressed(e) {
     snake.direction = "up";
   } else if (e.key === "ArrowRight" && snake.direction !== "left") {
     snake.direction = "right";
-  } else if (e.key === " " && isGameOver === false) {
+  } else if (e.key === " " && !isGameOver) {
     togglePause();
   } else if (e.key === "Enter") {
     restartGame();
@@ -90,14 +95,51 @@ function keyPressed(e) {
 }
 
 function togglePause() {
+  if (isGameOver) return;
+
+  isPaused = !isPaused;
   if (isPaused) {
-    id = setInterval(gameLoop, speed);
-    isPaused = false;
-  } else {
     clearInterval(id);
-    isPaused = true;
     pen.fillStyle = "red";
+    pen.font = "50px sans-serif";
     pen.fillText("Paused", W / 2 - 100, H / 2);
+  } else {
+    id = setInterval(gameLoop, speed);
+  }
+}
+
+function addSwipeControls() {
+  let touchStartX = 0, touchStartY = 0;
+  let touchEndX = 0, touchEndY = 0;
+
+  canvas.addEventListener("touchstart", function (e) {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  });
+
+  canvas.addEventListener("touchend", function (e) {
+    touchEndX = e.changedTouches[0].clientX;
+    touchEndY = e.changedTouches[0].clientY;
+    handleSwipe();
+  });
+
+  function handleSwipe() {
+    let dx = touchEndX - touchStartX;
+    let dy = touchEndY - touchStartY;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      if (dx > 0 && snake.direction !== "left") {
+        snake.direction = "right";
+      } else if (dx < 0 && snake.direction !== "right") {
+        snake.direction = "left";
+      }
+    } else {
+      if (dy > 0 && snake.direction !== "up") {
+        snake.direction = "down";
+      } else if (dy < 0 && snake.direction !== "down") {
+        snake.direction = "up";
+      }
+    }
   }
 }
 
@@ -124,14 +166,9 @@ function gameLoop() {
 function getRandomFood() {
   const foodX = Math.floor(Math.random() * (W / cs));
   const foodY = Math.floor(Math.random() * (H / cs));
-
   const isSpecial = Math.random() < 0.2;
 
-  return {
-    x: foodX,
-    y: foodY,
-    isSpecial: isSpecial,
-  };
+  return { x: foodX, y: foodY, isSpecial: isSpecial };
 }
 
 function increaseSpeed() {
@@ -153,19 +190,6 @@ function updateHighScore() {
     highScore = score;
     localStorage.setItem("highScore", highScore);
   }
-}
-
-document.addEventListener("keydown", function (e) {
-  if (e.key === "r" || e.key === "R") {
-    resetHighScore();
-  }
-});
-
-function resetHighScore() {
-  localStorage.removeItem("highScore");
-  highScore = 0;
-  pen.clearRect(0, 0, W, H);
-  draw();
 }
 
 function restartGame() {
